@@ -4,22 +4,93 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "LayeredEffectDefinition.generated.h"
+
+class ILayeredAttributes;
+
+DECLARE_LOG_CATEGORY_EXTERN(LogLayeredEffects, Warning, All);
+
+/// <summary>
+/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
+/// </summary>
+UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum ECreatureTypes
+{
+	CreatureTypes_None					= 0				UMETA(DisplayName = "None"),
+	CreatureTypes_Aberration			= (1 << 0)		UMETA(DisplayName = "Aberration"),
+	CreatureTypes_Beast					= (1 << 1)		UMETA(DisplayName = "Beast"),
+	CreatureTypes_Celestial				= (1 << 2)		UMETA(DisplayName = "Celestial"),
+	CreatureTypes_Construct				= (1 << 3)		UMETA(DisplayName = "Construct"),
+	CreatureTypes_Dragon				= (1 << 4)		UMETA(DisplayName = "Dragon"),
+	CreatureTypes_Elemental				= (1 << 5)		UMETA(DisplayName = "Elemental"),
+	CreatureTypes_Fey					= (1 << 6)		UMETA(DisplayName = "Fey"),
+	CreatureTypes_Fiend					= (1 << 7)		UMETA(DisplayName = "Fiend"),
+	CreatureTypes_Giant					= (1 << 8)		UMETA(DisplayName = "Giant"),
+	CreatureTypes_Humanoid				= (1 << 9)		UMETA(DisplayName = "Humanoid"),
+	CreatureTypes_Monstrosity			= (1 << 10)		UMETA(DisplayName = "Monstrosity"),
+	CreatureTypes_Ooze					= (1 << 11)		UMETA(DisplayName = "Ooze"),
+	CreatureTypes_Plant					= (1 << 12)		UMETA(DisplayName = "Plant"),
+	CreatureTypes_Undead				= (1 << 13)		UMETA(DisplayName = "Undead"),
+};
+ENUM_CLASS_FLAGS(ECreatureTypes);
+
+
+/// <summary>
+/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
+/// </summary>
+UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum ECreatureSubtypes
+{
+	CreatureSubtypes_None				= 0				UMETA(DisplayName = "None"),
+	CreatureSubtypes_Air				= (1 << 0)		UMETA(DisplayName = "Air"),
+	CreatureSubtypes_Aquatic			= (1 << 1)		UMETA(DisplayName = "Aquatic"),
+	CreatureSubtypes_Chaotic			= (1 << 2)		UMETA(DisplayName = "Chaotic"),
+	CreatureSubtypes_Cold				= (1 << 3)		UMETA(DisplayName = "Cold"),
+	CreatureSubtypes_Earth				= (1 << 4)		UMETA(DisplayName = "Earth"),
+	CreatureSubtypes_Electricity		= (1 << 5)		UMETA(DisplayName = "Electricity"),
+	CreatureSubtypes_Evil				= (1 << 6)		UMETA(DisplayName = "Evil"),
+	CreatureSubtypes_Incorporeal		= (1 << 7)		UMETA(DisplayName = "Incorporeal"),
+	CreatureSubtypes_Fire				= (1 << 8)		UMETA(DisplayName = "Fire"),
+	CreatureSubtypes_Good				= (1 << 9)		UMETA(DisplayName = "Good"),
+	CreatureSubtypes_Lawful				= (1 << 10)		UMETA(DisplayName = "Lawful"),
+	CreatureSubtypes_Reptilian			= (1 << 11)		UMETA(DisplayName = "Reptilian"),
+	CreatureSubtypes_Water				= (1 << 11)		UMETA(DisplayName = "Water"),
+};
+ENUM_CLASS_FLAGS(ECreatureSubtypes);
+
+
+/// <summary>
+/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
+/// </summary>
+UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum ECreatureSupertypes
+{
+	CreatureSupertypes_None					= 0				UMETA(DisplayName = "None"),
+	CreatureSupertypes_Basic				= (1 << 0)		UMETA(DisplayName = "Basic"),
+	CreatureSupertypes_Legendary			= (1 << 1)		UMETA(DisplayName = "Legendary"),
+};
+ENUM_CLASS_FLAGS(ECreatureSupertypes);
+
 
 UENUM(BlueprintType)
 enum class EAttributeKey : uint8
 {
 	Invalid = 0,
-	Power,
-	Toughness,
-	Loyalty,
-	Color,
-	Types,
-	Subtypes,
-	Supertypes,
-	ConvertedManaCost,
-	Controller
+
+	Power			UMETA(Tooltip = "@TODO: fill out"),
+	Toughness		UMETA(Tooltip = "@TODO: fill out"),
+	Loyalty			UMETA(Tooltip = "@TODO: fill out"),
+	Mana			UMETA(Tooltip = "@TODO: fill out"),
+
+	Color			UMETA(Tooltip = "@TODO: fill out"),
+
+	Types			UMETA(Tooltip = "@TODO: fill out"),
+	Subtypes		UMETA(Tooltip = "@TODO: fill out"),
+	Supertypes		UMETA(Tooltip = "@TODO: fill out"),
+
+	Controller		UMETA(Tooltip = "@TODO: fill out")
 };
 
 
@@ -49,7 +120,7 @@ enum class EEffectOperation : uint8
 	Multiply,
 
 	/// <summary>
-	/// Perform a bitwise "or" operation.
+	/// Perform a bitwise "or" operation. (Add flag)
 	/// </summary>
 	BitwiseOr,
 
@@ -59,17 +130,57 @@ enum class EEffectOperation : uint8
 	BitwiseAnd,
 
 	/// <summary>
-	/// Perform a bitwise "exclusive or" operation.
+	/// Perform a bitwise "exclusive or" operation. (Toggle flag)
 	/// </summary>
 	BitwiseXor
 };
 
 
 /// <summary>
-/// Parameter struct for AddLayeredEffect(...)
+/// Temporary parameter struct used when an attribute has changed.
 /// </summary>
 USTRUCT(BlueprintType)
-struct WIZARDS_API FLayeredEffectDefinition
+struct WIZARDS_API FOnAttributeChangedData
+{
+	GENERATED_BODY()
+
+public:
+
+	FOnAttributeChangedData() = default;
+
+	FOnAttributeChangedData(
+		UObject* InOwner,
+		EAttributeKey InAttribute,
+		int32 InOldValue);
+
+	virtual ~FOnAttributeChangedData();
+
+	bool IsValid() const;
+
+	ILayeredAttributes* GetOwner() const;
+
+
+private:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UObject* Owner = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	EAttributeKey Attribute = EAttributeKey::Invalid;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	int32 NewValue = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	int32 OldValue = 0;
+};
+
+
+/// <summary>
+/// Parameter struct for AddLayeredEffect(...)
+/// </summary>
+UCLASS(BlueprintType)
+class WIZARDS_API ULayeredEffectDefinition : public UObject
 {
 	GENERATED_BODY()
 
@@ -79,6 +190,17 @@ public:
 	EEffectOperation GetOperation() const { return Operation; };
 	int32 GetModification() const { return Modification; };
 	int32 GetLayer() const { return Layer; };
+
+	UFUNCTION(BlueprintPure)
+	bool IsValid() const
+	{
+		return (GetAttribute() != EAttributeKey::Invalid
+			&& GetOperation() != EEffectOperation::Invalid);
+	}
+
+#if WITH_EDITOR
+	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent);
+#endif
 
 private:
 
@@ -103,6 +225,20 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 Modification = 0;
 
+#if WITH_EDITORONLY_DATA
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	FColor ModificationColor = FColor::Black;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureTypes))
+	int32 ModificationTypes = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureSubtypes))
+	int32 ModificationSubtypes = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureSupertypes))
+	int32 ModificationSupertypes = 0;
+#endif
+
 	/// <summary>
 	/// Which layer to apply this effect in. Smaller numbered layers
 	/// get applied first. Layered effects with the same layer get applied
@@ -110,4 +246,160 @@ private:
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 Layer = 0;
+};
+
+
+/// <summary>
+/// Represents an active layered effect.
+/// </summary>
+USTRUCT(BlueprintType)
+struct WIZARDS_API FActiveEffectDefinition
+{
+	GENERATED_BODY()
+
+public:
+
+	FActiveEffectDefinition() = default;
+
+	FActiveEffectDefinition(const UWorld* World, const ULayeredEffectDefinition* InDef)
+		: StartServerWorldTime(World == nullptr ? -1.f : World->GetTimeSeconds())
+		, Def(InDef)
+	{ }
+
+	bool IsValid() const
+	{
+		return (StartServerWorldTime >= 0.f
+			&& Def != nullptr
+			&& Def->IsValid());
+	}
+
+	float GetStartTime() const { return StartServerWorldTime; }
+
+	const ULayeredEffectDefinition* GetEffectDefinition() const { return Def; }
+
+
+private:
+
+	/// <summary>
+	/// Server timestamp when this effect was applied (in seconds).
+	/// </summary>
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float StartServerWorldTime = 0.f;
+
+	/// <summary>
+	/// GameplayEfect definition. The static data that this spec points to.
+	/// </summary>
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	const ULayeredEffectDefinition* Def = nullptr;
+};
+
+
+/// <summary>
+/// Stores applied FLayeredEffectDefinition.
+/// All operations maintain an increasing sorted order by FLayeredEffectDefinition::Layer.
+/// </summary>
+USTRUCT(BlueprintType)
+struct WIZARDS_API FSortedEffectDefinitions
+{
+	GENERATED_BODY()
+
+public:
+
+	void AddLayeredEffect(const UWorld* World, const ULayeredEffectDefinition* Effect);
+
+	bool ClearLayeredEffects();
+
+	int32 GetCurrentValue(const int32 BaseValue) const;
+
+private:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<FActiveEffectDefinition> SortedEffects;
+};
+
+
+/// <summary>
+/// Exposing helper methods to blueprint.
+/// </summary>
+UCLASS()
+class WIZARDS_API UStaticBlueprintLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToColor (int)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
+	static FColor Conv_IntToColor(int32 Value);
+
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToInt (color)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
+	static int32 Conv_ColorToInt(FColor Value);
+
+	static int32 GetValueClampedToInt32(int64 Value);
+
+	static int32 GetValueClampedToInt32(uint32 Value);
+
+	/** Uses StringFunction to transform every member of TargetArray to an FString. */
+	template <typename T, typename TAllocator = FDefaultAllocator, typename StringFn>
+	static FString ArrayAsString(const TArray<T, TAllocator>& TargetArray, StringFn StringFunction, const FString& Separator = TEXT(", "))
+	{
+		FString Result;
+		bool    First = true;
+		for (const auto& Element : TargetArray)
+		{
+			if (First)
+			{
+				First = false;
+			}
+			else
+			{
+				Result += Separator;
+			}
+
+			Result += StringFunction(Element);
+		}
+
+		return Result;
+	}
+
+	template <typename TAllocator = FDefaultAllocator>
+	static FString NameArrayAsString(const TArray<FName, TAllocator>& NameArray, const FString& Separator = TEXT(", "))
+	{
+		auto NameToString = [](const FName& Name) -> FString {
+			return Name.ToString();
+		};
+
+		return ArrayAsString(NameArray, NameToString, Separator);
+	}
+
+	/**
+	 * Converts a bitmask value to an FString.
+	 *
+	 * E.g., for
+	 * GetBitmaskValueAsString(EMyMask::MyMask_OptionA | EMyMask::MyMask_OptionB),
+	 * this will return "EMyMask::MyMask_OptionA | EMyMask::MyMask_OptionB".
+	 *
+	 * @tparam TEnum Type of the bitmask (e.g., <EMyMask>).
+	 * @param MaskValue Bitmask value to convert to an FString.
+	 * @returns The bitmask value as an FString.
+	 */
+	template <typename TEnum>
+	static FString GetBitmaskValueAsString(TEnum MaskValue)
+	{
+		UEnum* EnumPtr = GetEnumPtr<TEnum>();
+		TArray<FName> MaskValueEnumEntryNames;
+
+		for (int32 i = 0; i < GetEnumNumEntries<TEnum>(/*bIncludeMax*/ false); i++)
+		{
+			const TEnum CurEnumEntryValue = static_cast<TEnum>(EnumPtr->GetValueByIndex(i));
+			const FName CurEnumEntryName = EnumPtr->GetNameByIndex(i);
+
+			if (EnumHasAnyFlags(MaskValue, CurEnumEntryValue))
+			{
+				MaskValueEnumEntryNames.Add(CurEnumEntryName);
+			}
+		}
+
+		return NameArrayAsString(MaskValueEnumEntryNames, TEXT(" | "));
+	}
+
 };
