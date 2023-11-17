@@ -56,7 +56,7 @@ enum ECreatureSubtypes
 	CreatureSubtypes_Good				= (1 << 9)		UMETA(DisplayName = "Good"),
 	CreatureSubtypes_Lawful				= (1 << 10)		UMETA(DisplayName = "Lawful"),
 	CreatureSubtypes_Reptilian			= (1 << 11)		UMETA(DisplayName = "Reptilian"),
-	CreatureSubtypes_Water				= (1 << 11)		UMETA(DisplayName = "Water"),
+	CreatureSubtypes_Water				= (1 << 12)		UMETA(DisplayName = "Water"),
 };
 ENUM_CLASS_FLAGS(ECreatureSubtypes);
 
