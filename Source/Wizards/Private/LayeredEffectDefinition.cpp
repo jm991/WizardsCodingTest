@@ -2,8 +2,6 @@
 
 #include "LayeredEffectDefinition.h"
 
-#include "Kismet\KismetMathLibrary.h"
-
 #include "ILayeredAttributes.h"
 
 DEFINE_LOG_CATEGORY(LogLayeredEffects);
@@ -140,15 +138,12 @@ int32 FSortedEffectDefinitions::GetCurrentValue(const int32 BaseValue) const
 					CurrentValue *= CurEffectMod;
 					break;
 				case EEffectOperation::BitwiseOr:
-					//CurrentValue = UKismetMathLibrary::Or_IntInt(CurrentValue, CurEffectMod);
 					CurrentValue |= CurEffectMod;
 					break;
 				case EEffectOperation::BitwiseAnd:
-					//CurrentValue = UKismetMathLibrary::And_IntInt(CurrentValue, CurEffectMod);
 					CurrentValue &= CurEffectMod;
 					break;
 				case EEffectOperation::BitwiseXor:
-					//CurrentValue = UKismetMathLibrary::Xor_IntInt(CurrentValue, CurEffectMod);
 					CurrentValue ^= CurEffectMod;
 					break;
 
