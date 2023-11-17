@@ -10,8 +10,8 @@
 BEGIN_DEFINE_SPEC(AttributeTest, "Wizards.LayeredAttributes", FTestUtils::TestFlags)
 
 UWorld* World = nullptr;
-AWizardsCharacter* MyCharacter;
-TArray<EAttributeKey> AllAttributes;
+AWizardsCharacter* MyCharacter = nullptr;
+TArray<EAttributeKey> AllAttributes = { };
 
 END_DEFINE_SPEC(AttributeTest)
 
@@ -26,7 +26,7 @@ void AttributeTest::Define()
 		// Spawn Character in the world
 		if (World != nullptr)
 		{
-			if (!IsValid(MyCharacter))
+			if (MyCharacter == nullptr || !MyCharacter->IsValidLowLevel())
 			{
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -39,6 +39,7 @@ void AttributeTest::Define()
 
 		TestNotNull("Check if World is properly created", World);
 		TestNotNull("Check if MyCharacter is properly created", MyCharacter);
+		TestTrue("Check if MyCharacter memory is valid", MyCharacter->IsValidLowLevel());
 		TestEqual("Check if attributes were populated", AllAttributes.Num(), UStaticBlueprintLibrary::GetEnumNumEntries<EAttributeKey>());
 	});
 
@@ -46,6 +47,7 @@ void AttributeTest::Define()
 	{
 		// Cleanup
 		MyCharacter->Destroy();
+		MyCharacter = nullptr;
 
 		// Shut down the game
 		FTestUtils::Exit();
