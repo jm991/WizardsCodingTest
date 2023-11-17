@@ -54,6 +54,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void SetBaseAttribute(EAttributeKey Key, int32 Value);
 
+	/// <summary>
+	/// Get the base value for an attribute on this object. All base values
+	/// default to 0 until set.
+	/// </summary>
+	/// <param name="Key">The attribute being retrieved.</param>
+	/// <returns>Base value for the attribute</returns>
 	UFUNCTION(BlueprintCallable)
 	virtual int32 GetBaseAttribute(EAttributeKey Key) const;
 

@@ -184,6 +184,18 @@ struct WIZARDS_API FLayeredEffectDefinition
 
 public:
 
+	FLayeredEffectDefinition() = default;
+	FLayeredEffectDefinition(
+		EAttributeKey InAttribute,
+		EEffectOperation InOperation,
+		int32 InModification,
+		int32 InLayer)
+		: Attribute(InAttribute)
+		, Operation(InOperation)
+		, Modification(InModification)
+		, Layer(InLayer)
+	{ }
+
 	EAttributeKey GetAttribute() const { return Attribute; };
 	EEffectOperation GetOperation() const { return Operation; };
 	int32 GetModification() const { return Modification; };

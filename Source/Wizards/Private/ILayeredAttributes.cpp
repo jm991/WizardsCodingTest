@@ -19,7 +19,7 @@ void ILayeredAttributes::SetBaseAttribute(EAttributeKey Key, int32 Value)
 
 	// Set the base attribute to the new Value
 	TMap<EAttributeKey, int32>& BaseAttributes = GetBaseAttributesMutable();
-	BaseAttributes.FindOrAdd(Key, Value);
+	BaseAttributes.Add(Key, Value);
 
 	// If there's a change, broadcast it
 	FOnAttributeChangedData(AsObject(), Key, OldValue);
