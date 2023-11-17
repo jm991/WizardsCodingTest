@@ -49,8 +49,8 @@ public:
 	/// default to 0 until set. Note that resetting a base attribute does not
 	/// alter any existing layered effects.
 	/// </summary>
-	/// <param name="key">The attribute being set.</param>
-	/// <param name="value">The new base value.</param>
+	/// <param name="Key">The attribute being set.</param>
+	/// <param name="Value">The new base value.</param>
 	UFUNCTION(BlueprintCallable)
 	virtual void SetBaseAttribute(EAttributeKey Key, int32 Value);
 
@@ -84,11 +84,13 @@ public:
 	/// LayeredEffectDefinition for details on how layered effects are
 	/// applied. Note that any number of layered effects may be applied
 	/// at any given time. Also note that layered effects are not necessarily
-	/// applied in the same order they were added. (see ULayeredEffectDefinition::Layer)
+	/// applied in the same order they were added. (see FLayeredEffectDefinition::Layer)
 	/// </summary>
-	/// <param name="effect">The new layered effect to apply.</param>
+	/// <param name="Effect">The new layered effect to apply.</param>
+	/// <param name="bSuccess">Whether or not the effect was successfully applied.</param>
+	/// <returns>The handle to the newly applied effect.</returns>
 	UFUNCTION(BlueprintCallable)
-	virtual FActiveEffectHandle AddLayeredEffect(TSubclassOf<ULayeredEffectDefinition> Effect, bool& bSuccess);
+	virtual FActiveEffectHandle AddLayeredEffect(FLayeredEffectDefinition Effect, bool& bSuccess);
 
 	UFUNCTION(BlueprintCallable)
 	virtual UPARAM(DisplayName = "bSuccess") bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);

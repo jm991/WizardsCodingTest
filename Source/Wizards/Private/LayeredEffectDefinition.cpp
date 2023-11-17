@@ -6,47 +6,9 @@
 
 DEFINE_LOG_CATEGORY(LogLayeredEffects);
 
-#if WITH_EDITOR
-void ULayeredEffectDefinition::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	// Synchronize the Modification property with the helper properties
-	auto PropertyNameFn = [this](const FName PropertyName)
-	{
-		if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, Modification))
-		{
-			ModificationColor = UStaticBlueprintLibrary::Conv_IntToColor(Modification);
-			ModificationTypes = Modification;
-			ModificationSubtypes = Modification;
-			ModificationSupertypes = Modification;
-		}
-		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationColor))
-		{
-			Modification = UStaticBlueprintLibrary::Conv_ColorToInt(ModificationColor);
-		}
-		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationTypes))
-		{
-			Modification = ModificationTypes;
-		}
-		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSubtypes))
-		{
-			Modification = ModificationSubtypes;
-		}
-		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSupertypes))
-		{
-			Modification = ModificationSupertypes;
-		}
-	};
-	PropertyNameFn(PropertyChangedEvent.GetPropertyName());
-	PropertyNameFn(PropertyChangedEvent.GetMemberPropertyName());
-
-	// Call the base class version
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-#endif
-
 const FActiveEffectHandle FActiveEffectHandle::kInvalid = FActiveEffectHandle();
 
-FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> Effect)
+FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, const FLayeredEffectDefinition& Effect)
 {
 	if (World == nullptr)
 	{
@@ -54,34 +16,34 @@ FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* Wor
 		return FActiveEffectHandle::kInvalid;
 	}
 
-	if (Effect == nullptr || !Effect.GetDefaultObject()->IsValid())
+	if (!Effect.IsValid())
 	{
-		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid effect '%s'"), *GetNameSafe(Effect));
+		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid effect '%s'"), *Effect.ToString());
 		return FActiveEffectHandle::kInvalid;
 	}
 
-	const FActiveEffectDefinition NewEffect = FActiveEffectDefinition(World, Effect);
-	if (!NewEffect.IsValid())
+	const FActiveEffectDefinition NewActiveEffect = FActiveEffectDefinition(World, Effect);
+	if (!NewActiveEffect.IsValid())
 	{
-		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid active effect created from '%s'"), *GetNameSafe(Effect));
+		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid active effect created from '%s'"), *NewActiveEffect.ToString());
 		return FActiveEffectHandle::kInvalid;
 	}
 
-	const int32 NewEffectLayer = NewEffect.GetEffectDefinition()->GetLayer();
-	const float NewEffectStartTime = NewEffect.GetStartTime();
+	const int32 NewEffectLayer = NewActiveEffect.GetEffectDefinition().GetLayer();
+	const float NewEffectStartTime = NewActiveEffect.GetStartTime();
 
 	int32 IndexToInsert = 0;
 	for (const FActiveEffectDefinition& CurEffect : SortedEffects)
 	{
 		if (CurEffect.IsValid())
 		{
-			const int32 CurEffectLayer = CurEffect.GetEffectDefinition()->GetLayer();
+			const int32 CurEffectLayer = CurEffect.GetEffectDefinition().GetLayer();
 			const float CurEffectStartTime = CurEffect.GetStartTime();
 
 			if (CurEffectLayer < NewEffectLayer
 				|| CurEffectStartTime < NewEffectStartTime)
 			{
-				// 
+				// This effect should be at a higher layer - continue
 				IndexToInsert++;
 			}
 			else
@@ -92,10 +54,10 @@ FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* Wor
 		}
 	}
 
-	SortedEffects.Insert(NewEffect, IndexToInsert);
+	SortedEffects.Insert(NewActiveEffect, IndexToInsert);
 
 	// Create a new handle for this effect
-	return NewEffect.GetHandle();
+	return NewActiveEffect.GetHandle();
 }
 
 bool FSortedEffectDefinitions::RemoveLayeredEffect(const FActiveEffectHandle& InHandle)
@@ -121,9 +83,9 @@ int32 FSortedEffectDefinitions::GetCurrentValue(const int32 BaseValue) const
 	{
 		if (CurEffect.IsValid())
 		{
-			const int32 CurEffectMod = CurEffect.GetEffectDefinition()->GetModification();
+			const int32 CurEffectMod = CurEffect.GetEffectDefinition().GetModification();
 
-			switch (CurEffect.GetEffectDefinition()->GetOperation())
+			switch (CurEffect.GetEffectDefinition().GetOperation())
 			{
 				case EEffectOperation::Set:
 					CurrentValue = CurEffectMod;

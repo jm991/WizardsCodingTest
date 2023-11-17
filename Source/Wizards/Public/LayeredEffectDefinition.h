@@ -177,8 +177,8 @@ private:
 /// <summary>
 /// Parameter struct for AddLayeredEffect(...)
 /// </summary>
-UCLASS(BlueprintType, Blueprintable)
-class WIZARDS_API ULayeredEffectDefinition : public UObject
+USTRUCT(BlueprintType)
+struct WIZARDS_API FLayeredEffectDefinition
 {
 	GENERATED_BODY()
 
@@ -189,16 +189,17 @@ public:
 	int32 GetModification() const { return Modification; };
 	int32 GetLayer() const { return Layer; };
 
-	UFUNCTION(BlueprintPure)
 	bool IsValid() const
 	{
 		return (GetAttribute() != EAttributeKey::Invalid
 			&& GetOperation() != EEffectOperation::Invalid);
 	}
 
-#if WITH_EDITOR
-	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent);
-#endif
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("TODO: implement"));
+	}
+
 
 private:
 
@@ -222,20 +223,6 @@ private:
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 Modification = 0;
-
-#if WITH_EDITORONLY_DATA
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FColor ModificationColor = FColor::Black;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureTypes))
-	int32 ModificationTypes = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureSubtypes))
-	int32 ModificationSubtypes = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = ECreatureSupertypes))
-	int32 ModificationSupertypes = 0;
-#endif
 
 	/// <summary>
 	/// Which layer to apply this effect in. Smaller numbered layers
@@ -272,6 +259,11 @@ struct WIZARDS_API FActiveEffectHandle
 		return Handle != INDEX_NONE;
 	}
 
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("%d"), Handle);
+	}
+
 	/** Creates a new handle, will be set to successfully applied */
 	static FActiveEffectHandle GenerateNewHandle(EAttributeKey Attribute);
 
@@ -288,11 +280,6 @@ struct WIZARDS_API FActiveEffectHandle
 	friend uint32 GetTypeHash(const FActiveEffectHandle& InHandle)
 	{
 		return InHandle.Handle;
-	}
-
-	FString ToString() const
-	{
-		return FString::Printf(TEXT("%d"), Handle);
 	}
 
 	void Invalidate()
@@ -325,25 +312,29 @@ public:
 
 	FActiveEffectDefinition() = default;
 
-	FActiveEffectDefinition(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> InDef)
-		: Handle(FActiveEffectHandle::GenerateNewHandle(InDef == nullptr ? EAttributeKey::Invalid : InDef.GetDefaultObject()->GetAttribute()))
+	FActiveEffectDefinition(const UWorld* World, const FLayeredEffectDefinition& InDef)
+		: Handle(FActiveEffectHandle::GenerateNewHandle(InDef.GetAttribute()))
 		, StartServerWorldTime(World == nullptr ? -1.f : World->GetTimeSeconds())
-		, Def(InDef == nullptr ? nullptr : InDef.GetDefaultObject())
+		, Def(InDef)
 	{ }
 
 	bool IsValid() const
 	{
 		return (Handle.IsValid()
 			&& StartServerWorldTime >= 0.f
-			&& Def != nullptr
-			&& Def->IsValid());
+			&& Def.IsValid());
+	}
+
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("TODO: fill out"));
 	}
 
 	const FActiveEffectHandle& GetHandle() const { return Handle; }
 
 	float GetStartTime() const { return StartServerWorldTime; }
 
-	const ULayeredEffectDefinition* GetEffectDefinition() const { return Def; }
+	const FLayeredEffectDefinition& GetEffectDefinition() const { return Def; }
 
 
 private:
@@ -364,7 +355,7 @@ private:
 	/// Effect definition. The static data that this spec points to.
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	const ULayeredEffectDefinition* Def = nullptr;
+	FLayeredEffectDefinition Def = FLayeredEffectDefinition();
 };
 
 
@@ -379,7 +370,7 @@ struct WIZARDS_API FSortedEffectDefinitions
 
 public:
 
-	FActiveEffectHandle AddLayeredEffect(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> Effect);
+	FActiveEffectHandle AddLayeredEffect(const UWorld* World, const FLayeredEffectDefinition& Effect);
 
 	bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
 
@@ -409,6 +400,12 @@ public:
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToInt (color)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
 	static int32 Conv_ColorToInt(FColor Value);
+
+	UFUNCTION(BlueprintPure, Category = "LayeredEffectDefinition")
+	static bool IsValid(const FLayeredEffectDefinition& Effect) { return Effect.IsValid(); }
+
+	UFUNCTION(BlueprintPure, meta = (CompactNodeTitle = "->", BlueprintAutocast), Category = "LayeredEffectDefinition")
+	static FString ToString(const FLayeredEffectDefinition& Effect) { return Effect.ToString(); }
 
 	static int32 GetValueClampedToInt32(int64 Value);
 

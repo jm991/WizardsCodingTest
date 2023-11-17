@@ -69,16 +69,16 @@ ECreatureSupertypes ILayeredAttributes::GetCurrentSupertypes() const
 	return static_cast<ECreatureSupertypes>(CurrentSupertypesInt);
 }
 
-FActiveEffectHandle ILayeredAttributes::AddLayeredEffect(TSubclassOf<ULayeredEffectDefinition> Effect, bool& bSuccess)
+FActiveEffectHandle ILayeredAttributes::AddLayeredEffect(FLayeredEffectDefinition Effect, bool& bSuccess)
 {
-	if (Effect == nullptr || !Effect.GetDefaultObject()->IsValid())
+	if (!Effect.IsValid())
 	{
 		bSuccess = false;
 		return FActiveEffectHandle::kInvalid;
 	}
 
 	// Capture the current attribute value
-	const EAttributeKey Key = Effect.GetDefaultObject()->GetAttribute();
+	const EAttributeKey Key = Effect.GetAttribute();
 	const int32 OldValue = GetCurrentAttribute(Key);
 
 	// Add the new layered effect
