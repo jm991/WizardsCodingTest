@@ -194,7 +194,9 @@ ILayeredAttributes* FOnAttributeChangedData::GetOwner() const
 FColor UStaticBlueprintLibrary::Conv_IntToColor(int32 Value)
 {
 	const uint32 UnsignedValue = std::make_unsigned_t<int32>(Value);
-	return FColor(UnsignedValue);
+	FColor ColorValue = FColor(UnsignedValue);
+	ColorValue.A = 255;
+	return ColorValue;
 }
 
 int32 UStaticBlueprintLibrary::Conv_ColorToInt(FColor Value)
