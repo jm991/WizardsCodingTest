@@ -69,23 +69,52 @@ ECreatureSupertypes ILayeredAttributes::GetCurrentSupertypes() const
 	return static_cast<ECreatureSupertypes>(CurrentSupertypesInt);
 }
 
-void ILayeredAttributes::AddLayeredEffect(const ULayeredEffectDefinition* Effect)
+FActiveEffectHandle ILayeredAttributes::AddLayeredEffect(TSubclassOf<ULayeredEffectDefinition> Effect, bool& bSuccess)
 {
-	if (Effect == nullptr || !Effect->IsValid())
+	if (Effect == nullptr || !Effect.GetDefaultObject()->IsValid())
 	{
-		return;
+		bSuccess = false;
+		return FActiveEffectHandle::kInvalid;
 	}
 
 	// Capture the current attribute value
-	const EAttributeKey Key = Effect->GetAttribute();
+	const EAttributeKey Key = Effect.GetDefaultObject()->GetAttribute();
 	const int32 OldValue = GetCurrentAttribute(Key);
 
 	// Add the new layered effect
 	FSortedEffectDefinitions& ActiveEffects = GetActiveEffectsMutable().FindOrAdd(Key);
-	ActiveEffects.AddLayeredEffect(GetWorld(), Effect);
+	const FActiveEffectHandle NewEffect = ActiveEffects.AddLayeredEffect(GetWorld(), Effect);
 
 	// If there's a change, broadcast it
 	FOnAttributeChangedData(AsObject(), Key, OldValue);
+
+	bSuccess = NewEffect.IsValid();
+	return NewEffect;
+}
+
+bool ILayeredAttributes::RemoveLayeredEffect(const FActiveEffectHandle& InHandle)
+{
+	if (!InHandle.IsValid())
+	{
+		return false;
+	}
+
+	if (const EAttributeKey Key = InHandle.GetAttribute();
+		FSortedEffectDefinitions* ActiveEffectsForAttribute = GetActiveEffectsMutable().Find(Key))
+	{
+		// Capture the current attribute value
+		const int32 OldValue = GetCurrentAttribute(Key);
+
+		// See if any effects were removed
+		if (ActiveEffectsForAttribute->RemoveLayeredEffect(InHandle))
+		{
+			// If there's a change, broadcast it
+			FOnAttributeChangedData(AsObject(), Key, OldValue);
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ILayeredAttributes::ClearLayeredEffects()

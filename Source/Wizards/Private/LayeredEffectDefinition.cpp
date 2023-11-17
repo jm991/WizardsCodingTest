@@ -12,43 +12,61 @@ DEFINE_LOG_CATEGORY(LogLayeredEffects);
 void ULayeredEffectDefinition::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	// Synchronize the Modification property with the helper properties
-	const FName PropertyName = PropertyChangedEvent.GetPropertyName();
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, Modification))
+	auto PropertyNameFn = [this](const FName PropertyName)
 	{
-		ModificationColor = UStaticBlueprintLibrary::Conv_IntToColor(Modification);
-		ModificationTypes = Modification;
-		ModificationSubtypes = Modification;
-		ModificationSupertypes = Modification;
-	}
-	else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationColor))
-	{
-		Modification = UStaticBlueprintLibrary::Conv_ColorToInt(ModificationColor);
-	}
-	else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationTypes))
-	{
-		Modification = ModificationTypes;
-	}
-	else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSubtypes))
-	{
-		Modification = ModificationSubtypes;
-	}
-	else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSupertypes))
-	{
-		Modification = ModificationSupertypes;
-	}
+		if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, Modification))
+		{
+			ModificationColor = UStaticBlueprintLibrary::Conv_IntToColor(Modification);
+			ModificationTypes = Modification;
+			ModificationSubtypes = Modification;
+			ModificationSupertypes = Modification;
+		}
+		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationColor))
+		{
+			Modification = UStaticBlueprintLibrary::Conv_ColorToInt(ModificationColor);
+		}
+		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationTypes))
+		{
+			Modification = ModificationTypes;
+		}
+		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSubtypes))
+		{
+			Modification = ModificationSubtypes;
+		}
+		else if (PropertyName == GET_MEMBER_NAME_CHECKED(ULayeredEffectDefinition, ModificationSupertypes))
+		{
+			Modification = ModificationSupertypes;
+		}
+	};
+	PropertyNameFn(PropertyChangedEvent.GetPropertyName());
+	PropertyNameFn(PropertyChangedEvent.GetMemberPropertyName());
 
 	// Call the base class version
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif
 
-void FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, const ULayeredEffectDefinition* Effect)
+const FActiveEffectHandle FActiveEffectHandle::kInvalid = FActiveEffectHandle();
+
+FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> Effect)
 {
-	const FActiveEffectDefinition NewEffect = FActiveEffectDefinition(World, Effect);
-	if (World == nullptr || Effect == nullptr || !NewEffect.IsValid())
+	if (World == nullptr)
+	{
+		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid world"));
+		return FActiveEffectHandle::kInvalid;
+	}
+
+	if (Effect == nullptr || !Effect.GetDefaultObject()->IsValid())
 	{
 		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid effect '%s'"), *GetNameSafe(Effect));
-		return;
+		return FActiveEffectHandle::kInvalid;
+	}
+
+	const FActiveEffectDefinition NewEffect = FActiveEffectDefinition(World, Effect);
+	if (!NewEffect.IsValid())
+	{
+		UE_LOG(LogLayeredEffects, Error, TEXT("Invalid active effect created from '%s'"), *GetNameSafe(Effect));
+		return FActiveEffectHandle::kInvalid;
 	}
 
 	const int32 NewEffectLayer = NewEffect.GetEffectDefinition()->GetLayer();
@@ -77,6 +95,17 @@ void FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, const ULaye
 	}
 
 	SortedEffects.Insert(NewEffect, IndexToInsert);
+
+	// Create a new handle for this effect
+	return NewEffect.GetHandle();
+}
+
+bool FSortedEffectDefinitions::RemoveLayeredEffect(const FActiveEffectHandle& InHandle)
+{
+	const int32 NumRemovedEffects = SortedEffects.RemoveAll([InHandle](const FActiveEffectDefinition& CurActiveEffect) {
+		return CurActiveEffect.GetHandle() == InHandle;
+	});
+	return (NumRemovedEffects > 0);
 }
 
 bool FSortedEffectDefinitions::ClearLayeredEffects()
@@ -146,11 +175,8 @@ FOnAttributeChangedData::FOnAttributeChangedData(
 	{
 		NewValue = MyOwner->GetCurrentAttribute(InAttribute);
 	}
-}
 
-FOnAttributeChangedData::~FOnAttributeChangedData()
-{
-	// When this struct is popped off the stack, we broadcast the event if it has valid data
+	// When this struct is created, we broadcast the event if it has valid data
 	if (const ILayeredAttributes* MyOwner = GetOwner();
 		MyOwner != nullptr && IsValid())
 	{
@@ -195,4 +221,11 @@ int32 UStaticBlueprintLibrary::GetValueClampedToInt32(uint32 Value)
 	UE_CLOG(!FMath::IsWithinInclusive(Value, static_cast<uint32>(0), static_cast<uint32>(MAX_int32)),
 		LogLayeredEffects, Error, TEXT("Clamping incoming unsigned value %u to [%d, %d]."), Value, 0, MAX_int32);
 	return FMath::Clamp(Value, static_cast<uint32>(0), static_cast<uint32>(MAX_int32));
+}
+
+FActiveEffectHandle FActiveEffectHandle::GenerateNewHandle(EAttributeKey Attribute)
+{
+	static int32 GHandleID = 0;
+	FActiveEffectHandle NewHandle(GHandleID++, Attribute);
+	return NewHandle;
 }

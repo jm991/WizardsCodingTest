@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "WizardsCharacter.h"
+
+#include "Algo/ForEach.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
@@ -45,7 +47,22 @@ AWizardsCharacter::AWizardsCharacter()
 	PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
+void AWizardsCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Register BP callback for attribute changes
+	OnAnyAttributeValueChanged.AddUniqueDynamic(this, &AWizardsCharacter::HandleOnAnyAttributeValueChanged);
+
+	// Clear and re-load up all of our initial attributes to trigger changed delegates
+	const TMap<EAttributeKey, int32> InitialAttributes = BaseAttributes;
+	BaseAttributes.Empty(BaseAttributes.Num());
+	Algo::ForEach(InitialAttributes, [this](const TPair<EAttributeKey, int32>& CurInitialAttribute) {
+		SetBaseAttribute(CurInitialAttribute.Key, CurInitialAttribute.Value);
+	});
+}
+
 void AWizardsCharacter::Tick(float DeltaSeconds)
 {
-    Super::Tick(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
 }

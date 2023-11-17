@@ -18,6 +18,8 @@ public:
 
 	AWizardsCharacter();
 
+	virtual void BeginPlay() override;
+
 	// Called every frame.
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -27,6 +29,9 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 protected:
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void HandleOnAnyAttributeValueChanged(const FOnAttributeChangedData& Data);
 
 	// "ILayeredAttributes" interface methods
 	virtual TMap<EAttributeKey, int32>& GetBaseAttributesMutable() override { return BaseAttributes; }
@@ -38,7 +43,7 @@ protected:
 
 public:
 
-	UPROPERTY(BlueprintAssignable, Category = Attributes, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintAssignable, Category = Attributes)
 	FOnAttributeValueChangedEvent OnAnyAttributeValueChanged;
 
 private:

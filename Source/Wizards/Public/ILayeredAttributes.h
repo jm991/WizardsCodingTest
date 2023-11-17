@@ -88,7 +88,10 @@ public:
 	/// </summary>
 	/// <param name="effect">The new layered effect to apply.</param>
 	UFUNCTION(BlueprintCallable)
-	virtual void AddLayeredEffect(const ULayeredEffectDefinition* Effect);
+	virtual FActiveEffectHandle AddLayeredEffect(TSubclassOf<ULayeredEffectDefinition> Effect, bool& bSuccess);
+
+	UFUNCTION(BlueprintCallable)
+	virtual UPARAM(DisplayName = "bSuccess") bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
 
 	/// <summary>
 	/// Removes all layered effects from this object. After this call,

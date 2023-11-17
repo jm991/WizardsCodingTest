@@ -153,8 +153,6 @@ public:
 		EAttributeKey InAttribute,
 		int32 InOldValue);
 
-	virtual ~FOnAttributeChangedData();
-
 	bool IsValid() const;
 
 	ILayeredAttributes* GetOwner() const;
@@ -179,7 +177,7 @@ private:
 /// <summary>
 /// Parameter struct for AddLayeredEffect(...)
 /// </summary>
-UCLASS(BlueprintType)
+UCLASS(BlueprintType, Blueprintable)
 class WIZARDS_API ULayeredEffectDefinition : public UObject
 {
 	GENERATED_BODY()
@@ -250,6 +248,72 @@ private:
 
 
 /// <summary>
+/// This handle is required for referring to a specific active FActiveEffectDefinition.
+/// For example if a skill needs to create an active effect and then destroy that specific effect that it created, it has to do so
+/// through a handle.a pointer or index into the active list is not sufficient.
+/// </summary>
+USTRUCT(BlueprintType)
+struct WIZARDS_API FActiveEffectHandle
+{
+	GENERATED_BODY()
+
+	FActiveEffectHandle() = default;
+
+	FActiveEffectHandle(int32 InHandle, EAttributeKey InAttribute)
+		: Handle(InHandle)
+		, Attribute(InAttribute)
+	{ }
+
+	static const FActiveEffectHandle kInvalid;
+
+	/** True if this is tracking an active ongoing effect */
+	bool IsValid() const
+	{
+		return Handle != INDEX_NONE;
+	}
+
+	/** Creates a new handle, will be set to successfully applied */
+	static FActiveEffectHandle GenerateNewHandle(EAttributeKey Attribute);
+
+	bool operator==(const FActiveEffectHandle& Other) const
+	{
+		return Handle == Other.Handle;
+	}
+
+	bool operator!=(const FActiveEffectHandle& Other) const
+	{
+		return Handle != Other.Handle;
+	}
+
+	friend uint32 GetTypeHash(const FActiveEffectHandle& InHandle)
+	{
+		return InHandle.Handle;
+	}
+
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("%d"), Handle);
+	}
+
+	void Invalidate()
+	{
+		Handle = INDEX_NONE;
+	}
+
+	EAttributeKey GetAttribute() const { return Attribute; }
+
+private:
+
+	UPROPERTY()
+	int32 Handle = INDEX_NONE;
+
+	UPROPERTY()
+	EAttributeKey Attribute = EAttributeKey::Invalid;
+
+};
+
+
+/// <summary>
 /// Represents an active layered effect.
 /// </summary>
 USTRUCT(BlueprintType)
@@ -261,17 +325,21 @@ public:
 
 	FActiveEffectDefinition() = default;
 
-	FActiveEffectDefinition(const UWorld* World, const ULayeredEffectDefinition* InDef)
-		: StartServerWorldTime(World == nullptr ? -1.f : World->GetTimeSeconds())
-		, Def(InDef)
+	FActiveEffectDefinition(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> InDef)
+		: Handle(FActiveEffectHandle::GenerateNewHandle(InDef == nullptr ? EAttributeKey::Invalid : InDef.GetDefaultObject()->GetAttribute()))
+		, StartServerWorldTime(World == nullptr ? -1.f : World->GetTimeSeconds())
+		, Def(InDef == nullptr ? nullptr : InDef.GetDefaultObject())
 	{ }
 
 	bool IsValid() const
 	{
-		return (StartServerWorldTime >= 0.f
+		return (Handle.IsValid()
+			&& StartServerWorldTime >= 0.f
 			&& Def != nullptr
 			&& Def->IsValid());
 	}
+
+	const FActiveEffectHandle& GetHandle() const { return Handle; }
 
 	float GetStartTime() const { return StartServerWorldTime; }
 
@@ -281,13 +349,19 @@ public:
 private:
 
 	/// <summary>
+	/// Globally unique ID for identify this active effect. Not networked since it's created from a static var.
+	/// </summary>
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, NotReplicated, meta = (AllowPrivateAccess = "true"))
+	FActiveEffectHandle Handle = FActiveEffectHandle::kInvalid;
+
+	/// <summary>
 	/// Server timestamp when this effect was applied (in seconds).
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float StartServerWorldTime = 0.f;
 
 	/// <summary>
-	/// GameplayEfect definition. The static data that this spec points to.
+	/// Effect definition. The static data that this spec points to.
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	const ULayeredEffectDefinition* Def = nullptr;
@@ -305,7 +379,9 @@ struct WIZARDS_API FSortedEffectDefinitions
 
 public:
 
-	void AddLayeredEffect(const UWorld* World, const ULayeredEffectDefinition* Effect);
+	FActiveEffectHandle AddLayeredEffect(const UWorld* World, TSubclassOf<ULayeredEffectDefinition> Effect);
+
+	bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
 
 	bool ClearLayeredEffects();
 
