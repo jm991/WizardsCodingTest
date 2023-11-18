@@ -509,6 +509,25 @@ public:
 	}
 
 	/**
+	 * Converts an enum value's name to a string (no namespace).
+	 *
+	 * E.g., for
+	 * UStaticLibrary::GetEnumValueShortAsString(EMyEnum::OptionA),
+	 * this will return "OptionA".
+	 *
+	 * @tparam TEnum Type of the enum (e.g., <ENetRole>).
+	 * @param Value Enum value to convert to a string.
+	 * @returns The enum value's name as string.
+	 */
+	template <typename TEnum>
+	static FORCEINLINE FString GetEnumValueShortAsString(TEnum Value)
+	{
+		FString AsString;
+		GetEnumValueAsString(Value).Split("::", nullptr, &AsString, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+		return AsString;
+	}
+
+	/**
 	 * Gets the enum pointer from the templated argument.
 	 *
 	 * @tparam TEnum Type of the enum (e.g., <ENetRole>).

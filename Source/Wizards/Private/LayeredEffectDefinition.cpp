@@ -50,7 +50,7 @@ FString FLayeredEffectDefinition::ToString() const
 {
 	return FString::Printf(TEXT("L%d %s: %s %d"),
 		Layer,
-		*UEnumLibrary::GetEnumValueAsString(Attribute),
+		*UEnumLibrary::GetEnumValueShortAsString(Attribute),
 		*EEffectOperationUtils::OperatorToString(Operation),
 		Modification);
 }
