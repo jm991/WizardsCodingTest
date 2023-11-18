@@ -1,6 +1,8 @@
 // Copyright 2023 John McElmurray (johnmcelmurray.com). All rights reserved.
 
+#include "Algo/Accumulate.h"
 #include "Algo/ForEach.h"
+#include "Algo/Transform.h"
 
 #include "TestUtils.h"
 #include "ILayeredAttributes.h"
@@ -67,7 +69,7 @@ void AttributeTest::Define()
 
 	Describe("LayeredAttributes", [this]()
 	{
-		It("Should initialize base attributes", [this]()
+		It("Can initialize base attributes", [this]()
 		{
 			for (int32 i = 0; i < AllAttributes.Num(); i++)
 			{
@@ -92,7 +94,7 @@ void AttributeTest::Define()
 				const FLayeredEffectDefinition InvalidOperationEffect = FLayeredEffectDefinition(EAttributeKey::Power, EEffectOperation::Invalid, 0, 0);
 				bool bInvalidOperationEffectApplied = false;
 				MyCharacter->AddLayeredEffect(InvalidOperationEffect, bInvalidOperationEffectApplied);
-				TestFalse("Invalid attribute effect not applied", bInvalidOperationEffectApplied);
+				TestFalse("Invalid operation effect not applied", bInvalidOperationEffectApplied);
 			}
 		});
 
@@ -123,7 +125,7 @@ void AttributeTest::Define()
 			}
 
 			MyCharacter->SetBaseAttribute(Attribute, BaseValueB);
-			TestEqual("Second base attribute modifies current value", MyCharacter->GetCurrentAttribute(Attribute), ((BaseValueB + AddAmt) * MultiplyAmt));
+			TestEqual("Changing to second base attribute modifies current value", MyCharacter->GetCurrentAttribute(Attribute), ((BaseValueB + AddAmt) * MultiplyAmt));
 		});
 
 		It("Removing a layered effect properly adjust current value", [this]()
@@ -159,23 +161,110 @@ void AttributeTest::Define()
 			TestEqual("Layered effect value was updated after subtractive effect was removed", MyCharacter->GetCurrentAttribute(Attribute), ((BaseValue + AddAmt) * MultiplyAmt));
 		});
 
+		It("Testing evaluation of EEffectOperation", [this]()
+		{
+			const int32 BaseValue = 1;
+			const int32 Modification = 256;
+
+			TArray<TPair<LayeredEffectTest, int32>> TestOperationsAndExpectedValues =
+			{
+				MakeTuple(LayeredEffectTest{ EEffectOperation::Set, Modification, Modification }, 256),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::Add, Modification, (BaseValue + Modification) }, 257),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::Subtract, Modification, (BaseValue - Modification) }, -255),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::Multiply, Modification, (BaseValue * Modification) }, 256),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::BitwiseOr, Modification, (BaseValue | Modification) }, 257),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::BitwiseAnd, Modification, (BaseValue & Modification) }, 0),
+				MakeTuple(LayeredEffectTest{ EEffectOperation::BitwiseXor, Modification, (BaseValue ^ Modification) }, 257),
+			};
+
+			for (const TPair<LayeredEffectTest, int32>& CurTestOperationAndExpectedValue : TestOperationsAndExpectedValues)
+			{
+				const int32 CurActualValue = FSortedEffectDefinitions::Evaluate(BaseValue, CurTestOperationAndExpectedValue.Key.Modification, CurTestOperationAndExpectedValue.Key.Operation);
+				TestEqual("Evaluated value matches expected hand-calculated value", CurActualValue, CurTestOperationAndExpectedValue.Value);
+				TestEqual("Evaluated value matches expected code-calculated value", CurActualValue, CurTestOperationAndExpectedValue.Key.ExpectedValue);
+			}
+		});
+
+		It("Layered effects with the same layer get applied in the order they were added (timestamp order)", [this]()
+		{
+			const EAttributeKey Attribute = EAttributeKey::Power;
+			const int32 BaseValue = -1;
+			const int32 Layer = 1;
+			const int32 AddAmt = 2;
+			const int32 MultiplyAmt = -5;
+
+			// These same-layer effects are intentionally authored so that their order of application matters
+			const TArray<TPair<FLayeredEffectDefinition, int32>> LayeredEffectsAndExpectedValuesA =
+			{
+				//																				Mod				Layer
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Multiply,		MultiplyAmt,	Layer), (BaseValue * MultiplyAmt)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Add,			AddAmt,			Layer), ((BaseValue * MultiplyAmt) + AddAmt)),
+			};
+			const TArray<TPair<FLayeredEffectDefinition, int32>> LayeredEffectsAndExpectedValuesB =
+			{
+				//																				Mod				Layer
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Add,			AddAmt,			Layer), (BaseValue + AddAmt)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Multiply,		MultiplyAmt,	Layer), ((BaseValue + AddAmt) * MultiplyAmt)),
+			};
+
+			auto TestLayeredEffectsFn = [this, Attribute](const TArray<TPair<FLayeredEffectDefinition, int32>>& LayeredEffectsAndExpectedValues)
+			{
+				for (const TPair<FLayeredEffectDefinition, int32>& CurLayeredEffectAndExpectedVal : LayeredEffectsAndExpectedValues)
+				{
+					bool bSuccess = false;
+					MyCharacter->AddLayeredEffect(CurLayeredEffectAndExpectedVal.Key, bSuccess);
+					TestTrue("Current layered effect was successfully applied", bSuccess);
+					const int32 CurActual = MyCharacter->GetCurrentAttribute(Attribute);
+					const int32 CurExpected = CurLayeredEffectAndExpectedVal.Value;
+					TestEqual("Layered effect value was correct", CurActual, CurExpected);
+				}
+			};
+
+			MyCharacter->SetBaseAttribute(Attribute, BaseValue);
+			TestEqual("First base attribute initialized", MyCharacter->GetCurrentAttribute(Attribute), BaseValue);
+
+			TestLayeredEffectsFn(LayeredEffectsAndExpectedValuesA);
+			MyCharacter->ClearLayeredEffects();
+			TestLayeredEffectsFn(LayeredEffectsAndExpectedValuesB);
+		});
+
 		It("Smaller numbered layers get applied first - layered effects with the same layer get applied in the order that they were added (timestamp order)", [this]()
 		{
 			const EAttributeKey Attribute = EAttributeKey::Power;
 			const int32 BaseValue = -15;
 
-			// Test a complex layering of effects, to make sure operations are applied correctly and the effects are sorted correctly
-			TArray<TPair<FLayeredEffectDefinition, int32>> LayeredEffectsAndExpectedValues =
+			// Test a complex layering of effects, to make sure operations are applied correctly and the effects are sorted correctly within the same layer
+			const TArray<FLayeredEffectDefinition> LayeredEffects =
 			{
-				//																				Mod		Layer	Expected
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Add,			2,		4)	,	(BaseValue + 2)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Subtract,		-5,		0)	,	((BaseValue - -5) + 2)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Multiply,		-2,		1)	,	(((BaseValue - -5) * -2) + 2)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseOr,	1,		5)	,	((((BaseValue - -5) * -2) + 2) | 1)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseAnd,	4,		2)	,	(((((BaseValue - -5) * -2) & 4) + 2) | 1)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseXor,	8,		2)	,	((((((BaseValue - -5) * -2) & 4) ^ 8) + 2) | 1)),
-				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Set,			3,		2)	,	((3 + 2) | 1)),
+				//																	Mod		Layer
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::Add,			2,		3),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::Subtract,		-5,		0),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::Multiply,		-2,		1),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseOr,	1,		4),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseAnd,	4,		2),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseXor,	8,		2),
+				FLayeredEffectDefinition(Attribute,	EEffectOperation::Set,			3,		2),
 			};
+
+			TArray<FLayeredEffectDefinition> SortedLayerEffects;
+			TArray<TPair<FLayeredEffectDefinition, int32>> LayeredEffectsAndExpectedValues;
+			Algo::Transform(LayeredEffects, LayeredEffectsAndExpectedValues, [this, &SortedLayerEffects](const FLayeredEffectDefinition& CurLayeredEffect)
+			{
+				SortedLayerEffects.Add(CurLayeredEffect);
+
+				// Sort lowest layers to the front of the array, must be StableSort since effects on the same layer are applied in the order they were added
+				SortedLayerEffects.StableSort([](const FLayeredEffectDefinition& A, const FLayeredEffectDefinition& B) {
+					return A.GetLayer() < B.GetLayer();
+				});
+
+				// Accumulate the layered effect expected value with the current stack of effects applied to BaseValue
+				const int32 CurExpectedValue = Algo::Accumulate(SortedLayerEffects, BaseValue, [](int32 Accum, const FLayeredEffectDefinition& CurSortedLayeredEffect)
+				{
+					return FSortedEffectDefinitions::Evaluate(Accum, CurSortedLayeredEffect.GetModification(), CurSortedLayeredEffect.GetOperation());
+				});
+
+				return MakeTuple(CurLayeredEffect, CurExpectedValue);
+			});
 
 			MyCharacter->SetBaseAttribute(Attribute, BaseValue);
 			TestEqual("First base attribute initialized", MyCharacter->GetCurrentAttribute(Attribute), BaseValue);

@@ -8,6 +8,49 @@ DEFINE_LOG_CATEGORY(LogLayeredEffects);
 
 const FActiveEffectHandle FActiveEffectHandle::kInvalid = FActiveEffectHandle();
 
+int32 FSortedEffectDefinitions::Evaluate(int32 LhsOperand, int32 RhsOperand, EEffectOperation Operator)
+{
+	switch (Operator)
+	{
+		case EEffectOperation::Set:
+			return RhsOperand;
+		case EEffectOperation::Add:
+			return (LhsOperand + RhsOperand);
+		case EEffectOperation::Subtract:
+			return (LhsOperand - RhsOperand);
+		case EEffectOperation::Multiply:
+			return (LhsOperand * RhsOperand);
+		case EEffectOperation::BitwiseOr:
+			return (LhsOperand | RhsOperand);
+		case EEffectOperation::BitwiseAnd:
+			return (LhsOperand & RhsOperand);
+		case EEffectOperation::BitwiseXor:
+			return (LhsOperand ^ RhsOperand);
+
+		default:
+			checkNoEntry();
+			return LhsOperand;
+	}
+}
+
+int32 FSortedEffectDefinitions::GetCurrentValue(const int32 BaseValue) const
+{
+	int32 CurrentValue = BaseValue;
+
+	for (const FActiveEffectDefinition& CurEffect : SortedEffects)
+	{
+		if (CurEffect.IsValid())
+		{
+			const int32 CurEffectMod = CurEffect.GetEffectDefinition().GetModification();
+			const EEffectOperation CurEffectOp = CurEffect.GetEffectDefinition().GetOperation();
+
+			CurrentValue = Evaluate(CurrentValue, CurEffectMod, CurEffectOp);
+		}
+	}
+
+	return CurrentValue;
+}
+
 FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* World, const FLayeredEffectDefinition& Effect)
 {
 	if (World == nullptr)
@@ -73,50 +116,6 @@ bool FSortedEffectDefinitions::ClearLayeredEffects()
 	const bool bAnyEffectsCleared = (SortedEffects.Num() > 0);
 	SortedEffects.Empty();
 	return bAnyEffectsCleared;
-}
-
-int32 FSortedEffectDefinitions::GetCurrentValue(const int32 BaseValue) const
-{
-	int32 CurrentValue = BaseValue;
-
-	for (const FActiveEffectDefinition& CurEffect : SortedEffects)
-	{
-		if (CurEffect.IsValid())
-		{
-			const int32 CurEffectMod = CurEffect.GetEffectDefinition().GetModification();
-
-			switch (CurEffect.GetEffectDefinition().GetOperation())
-			{
-				case EEffectOperation::Set:
-					CurrentValue = CurEffectMod;
-					break;
-				case EEffectOperation::Add:
-					CurrentValue += CurEffectMod;
-					break;
-				case EEffectOperation::Subtract:
-					CurrentValue -= CurEffectMod;
-					break;
-				case EEffectOperation::Multiply:
-					CurrentValue *= CurEffectMod;
-					break;
-				case EEffectOperation::BitwiseOr:
-					CurrentValue |= CurEffectMod;
-					break;
-				case EEffectOperation::BitwiseAnd:
-					CurrentValue &= CurEffectMod;
-					break;
-				case EEffectOperation::BitwiseXor:
-					CurrentValue ^= CurEffectMod;
-					break;
-
-				default:
-					checkNoEntry();
-					break;
-			}
-		}
-	}
-
-	return CurrentValue;
 }
 
 FOnAttributeChangedData::FOnAttributeChangedData(

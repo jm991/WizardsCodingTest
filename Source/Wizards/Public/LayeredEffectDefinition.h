@@ -382,6 +382,8 @@ struct WIZARDS_API FSortedEffectDefinitions
 
 public:
 
+	static int32 Evaluate(int32 LhsOperand, int32 RhsOperand, EEffectOperation Operator);
+
 	FActiveEffectHandle AddLayeredEffect(const UWorld* World, const FLayeredEffectDefinition& Effect);
 
 	bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
