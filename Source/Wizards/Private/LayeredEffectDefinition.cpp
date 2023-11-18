@@ -83,8 +83,9 @@ FActiveEffectHandle FSortedEffectDefinitions::AddLayeredEffect(const UWorld* Wor
 			const int32 CurEffectLayer = CurEffect.GetEffectDefinition().GetLayer();
 			const float CurEffectStartTime = CurEffect.GetStartTime();
 
-			if (CurEffectLayer < NewEffectLayer
-				|| CurEffectStartTime < NewEffectStartTime)
+			if (NewEffectLayer > CurEffectLayer // Smaller numbered layers get applied first
+				|| (NewEffectLayer == CurEffectLayer // Effects with the same layer get applied in the order that they were added (timestamp order)
+					&& NewEffectStartTime >= CurEffectStartTime))
 			{
 				// This effect should be at a higher layer - continue
 				IndexToInsert++;
