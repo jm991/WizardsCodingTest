@@ -9,6 +9,9 @@
 
 #include "WizardsCharacter.generated.h"
 
+/// <summary>
+/// Character that implements layered attributes.
+/// </summary>
 UCLASS(Blueprintable)
 class AWizardsCharacter : public ACharacter, public ILayeredAttributes
 {
@@ -48,19 +51,27 @@ public:
 
 private:
 
-	/** Top down camera */
+	/// <summary>
+	/// Top down camera
+	/// </summary>
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* TopDownCameraComponent;
 
-	/** Camera boom positioning the camera above the character */
+	/// <summary>
+	/// Camera boom positioning the camera above the character
+	/// </summary>
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
-	/** Base attributes for this character. */
+	/// <summary>
+	/// Base attributes for this character
+	/// </summary>
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Attributes, meta = (AllowPrivateAccess = "true"))
 	TMap<EAttributeKey, int32> BaseAttributes;
 
-	/** Active effects modifying attributes for this character. */
+	/// <summary>
+	/// Active effects modifying attributes for this character
+	/// </summary>
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Attributes, meta = (AllowPrivateAccess = "true"))
 	TMap<EAttributeKey, FSortedEffectDefinitions> ActiveEffects;
 

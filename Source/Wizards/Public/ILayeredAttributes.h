@@ -9,13 +9,6 @@
 
 #include "ILayeredAttributes.generated.h"
 
-// GOAL:
-//   Create a class that implements the following interface. Use your best
-//     judgement when it comes to design tradeoffs and implementation decisions.
-//   You may create any number of other classes to support your implementation.
-//   If you alter the given code, please maintain the intent of the original code
-//     and document why your alterations were necessary.
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeValueChangedEvent, const FOnAttributeChangedData&, Data);
 
 // This class does not need to be modified.
@@ -40,8 +33,10 @@ class WIZARDS_API ILayeredAttributes
 
 public:
 
+	/// <returns>UObject implementing this interface.</returns>
 	UObject* AsObject();
 
+	/// <returns>World that this object is spawned in.</returns>
 	UWorld* GetWorld();
 
 	/// <summary>
@@ -68,22 +63,10 @@ public:
 	/// be equal to the base value, modified by any applicable layered
 	/// effects.
 	/// </summary>
-	/// <param name="key">The attribute being read.</param>
+	/// <param name="Key">The attribute being read.</param>
 	/// <returns>The current value of the attribute, accounting for all layered effects.</returns>
 	UFUNCTION(BlueprintCallable)
 	virtual int32 GetCurrentAttribute(EAttributeKey Key) const;
-
-	UFUNCTION(BlueprintCallable)
-	virtual FColor GetCurrentColor() const;
-
-	UFUNCTION(BlueprintCallable)
-	virtual ECreatureTypes GetCurrentTypes() const;
-
-	UFUNCTION(BlueprintCallable)
-	virtual ECreatureSubtypes GetCurrentSubtypes() const;
-
-	UFUNCTION(BlueprintCallable)
-	virtual ECreatureSupertypes GetCurrentSupertypes() const;
 
 	/// <summary>
 	/// Applies a new layered effect to this object's attributes. See
@@ -94,10 +77,15 @@ public:
 	/// </summary>
 	/// <param name="Effect">The new layered effect to apply.</param>
 	/// <param name="bSuccess">Whether or not the effect was successfully applied.</param>
-	/// <returns>The handle to the newly applied effect.</returns>
+	/// <returns>The handle to the newly applied effect, so that it can be removed later.</returns>
 	UFUNCTION(BlueprintCallable)
 	virtual FActiveEffectHandle AddLayeredEffect(FLayeredEffectDefinition Effect, bool& bSuccess);
 
+	/// <summary>
+	/// Removes an active layered effect.
+	/// </summary>
+	/// <param name="InHandle">Which active effect to remove.</param>
+	/// <returns>True if the effect was successfully removed.</returns>
 	UFUNCTION(BlueprintCallable)
 	virtual UPARAM(DisplayName = "bSuccess") bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
 

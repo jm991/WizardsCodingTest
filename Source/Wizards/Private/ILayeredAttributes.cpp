@@ -9,7 +9,8 @@ UObject* ILayeredAttributes::AsObject()
 
 UWorld* ILayeredAttributes::GetWorld()
 {
-	return AsObject()->GetWorld();
+	UObject* MyObject = AsObject();
+	return (MyObject == nullptr ? nullptr : MyObject->GetWorld());
 }
 
 void ILayeredAttributes::SetBaseAttribute(EAttributeKey Key, int32 Value)
@@ -42,31 +43,6 @@ int32 ILayeredAttributes::GetCurrentAttribute(EAttributeKey Key) const
 	}
 
 	return BaseValueForAttribute;
-}
-
-FColor ILayeredAttributes::GetCurrentColor() const
-{
-	const int32 CurrentColorInt = GetCurrentAttribute(EAttributeKey::Color);
-	const FColor CurrentColor = UStaticBlueprintLibrary::Conv_IntToColor(CurrentColorInt);
-	return CurrentColor;
-}
-
-ECreatureTypes ILayeredAttributes::GetCurrentTypes() const
-{
-	const int32 CurrentTypesInt = GetCurrentAttribute(EAttributeKey::Types);
-	return static_cast<ECreatureTypes>(CurrentTypesInt);
-}
-
-ECreatureSubtypes ILayeredAttributes::GetCurrentSubtypes() const
-{
-	const int32 CurrentSubtypesInt = GetCurrentAttribute(EAttributeKey::Subtypes);
-	return static_cast<ECreatureSubtypes>(CurrentSubtypesInt);
-}
-
-ECreatureSupertypes ILayeredAttributes::GetCurrentSupertypes() const
-{
-	const int32 CurrentSupertypesInt = GetCurrentAttribute(EAttributeKey::Supertypes);
-	return static_cast<ECreatureSupertypes>(CurrentSupertypesInt);
 }
 
 FActiveEffectHandle ILayeredAttributes::AddLayeredEffect(FLayeredEffectDefinition Effect, bool& bSuccess)

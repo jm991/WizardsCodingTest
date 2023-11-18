@@ -19,12 +19,14 @@ struct LayeredEffectTest
 	int32 ExpectedValue;
 };
 
+/// <summary>
+/// Test spec validating all of the requirements/specifications for the Wizards coding test.
+/// </summary>
 BEGIN_DEFINE_SPEC(AttributeTest, "Wizards.LayeredAttributes", FTestUtils::TestFlags)
 
 UWorld* World = nullptr;
 AWizardsCharacter* MyCharacter = nullptr;
 TArray<EAttributeKey> AllAttributes = { };
-TArray<EEffectOperation> AllOperations = { };
 
 END_DEFINE_SPEC(AttributeTest)
 
@@ -48,13 +50,12 @@ void AttributeTest::Define()
 		}
 
 		// Collect all the attributes
-		AllAttributes = UStaticBlueprintLibrary::GetEnumEntries<EAttributeKey>();
-		AllOperations = UStaticBlueprintLibrary::GetEnumEntries<EEffectOperation>(static_cast<EEffectOperation>(1)); // skip the EEffectOperation::Invalid
+		AllAttributes = UEnumLibrary::GetEnumEntries<EAttributeKey>();
 
 		TestNotNull("Check if World is properly created", World);
 		TestNotNull("Check if MyCharacter is properly created", MyCharacter);
 		TestTrue("Check if MyCharacter memory is valid", MyCharacter->IsValidLowLevel());
-		TestEqual("Check if attributes were populated", AllAttributes.Num(), UStaticBlueprintLibrary::GetEnumNumEntries<EAttributeKey>());
+		TestEqual("Check if attributes were populated", AllAttributes.Num(), UEnumLibrary::GetEnumNumEntries<EAttributeKey>());
 	});
 
 	AfterEach([this]()
@@ -128,7 +129,7 @@ void AttributeTest::Define()
 			TestEqual("Changing to second base attribute modifies current value", MyCharacter->GetCurrentAttribute(Attribute), ((BaseValueB + AddAmt) * MultiplyAmt));
 		});
 
-		It("Removing a layered effect properly adjust current value", [this]()
+		It("Removing a layered effect properly adjusts current value", [this]()
 		{
 			const EAttributeKey Attribute = EAttributeKey::Power;
 			const int32 BaseValue = 4;
@@ -179,7 +180,7 @@ void AttributeTest::Define()
 
 			for (const TPair<LayeredEffectTest, int32>& CurTestOperationAndExpectedValue : TestOperationsAndExpectedValues)
 			{
-				const int32 CurActualValue = FSortedEffectDefinitions::Evaluate(BaseValue, CurTestOperationAndExpectedValue.Key.Modification, CurTestOperationAndExpectedValue.Key.Operation);
+				const int32 CurActualValue = EEffectOperationUtils::Evaluate(BaseValue, CurTestOperationAndExpectedValue.Key.Modification, CurTestOperationAndExpectedValue.Key.Operation);
 				TestEqual("Evaluated value matches expected hand-calculated value", CurActualValue, CurTestOperationAndExpectedValue.Value);
 				TestEqual("Evaluated value matches expected code-calculated value", CurActualValue, CurTestOperationAndExpectedValue.Key.ExpectedValue);
 			}
@@ -260,7 +261,7 @@ void AttributeTest::Define()
 				// Accumulate the layered effect expected value with the current stack of effects applied to BaseValue
 				const int32 CurExpectedValue = Algo::Accumulate(SortedLayerEffects, BaseValue, [](int32 Accum, const FLayeredEffectDefinition& CurSortedLayeredEffect)
 				{
-					return FSortedEffectDefinitions::Evaluate(Accum, CurSortedLayeredEffect.GetModification(), CurSortedLayeredEffect.GetOperation());
+					return EEffectOperationUtils::Evaluate(Accum, CurSortedLayeredEffect.GetModification(), CurSortedLayeredEffect.GetOperation());
 				});
 
 				return MakeTuple(CurLayeredEffect, CurExpectedValue);
@@ -282,19 +283,16 @@ void AttributeTest::Define()
 
 		It("Clearing attributes removes all layered effects from this object - after this call, all current attributes will be equal to the base attributes", [this]()
 		{
-			for (int32 i = 0; i < AllAttributes.Num(); i++)
-			{
-				TestEqual("All base values default to 0 until set", MyCharacter->GetCurrentAttribute(AllAttributes[i]), 0);
-				MyCharacter->SetBaseAttribute(AllAttributes[i], i);
-				TestEqual("Set the base value for an attribute", MyCharacter->GetCurrentAttribute(AllAttributes[i]), i);
-			}
-
 			for (int32 i = 1; i < AllAttributes.Num(); i++)
 			{
 				// Skip the EAttributeKey::Invalid, since it can't be applied
 				if (const EAttributeKey CurAttribute = AllAttributes[i];
 					CurAttribute != EAttributeKey::Invalid)
 				{
+					TestEqual("All base values default to 0 until set", MyCharacter->GetCurrentAttribute(CurAttribute), 0);
+					MyCharacter->SetBaseAttribute(CurAttribute, i);
+					TestEqual("Set the base value for an attribute", MyCharacter->GetCurrentAttribute(CurAttribute), i);
+
 					bool bSuccess = false;
 					FLayeredEffectDefinition CurLayeredEffect = FLayeredEffectDefinition(CurAttribute, EEffectOperation::Add, i, i);
 					MyCharacter->AddLayeredEffect(CurLayeredEffect, bSuccess);

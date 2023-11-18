@@ -54,7 +54,7 @@ void AWizardsCharacter::BeginPlay()
 	// Register BP callback for attribute changes
 	OnAnyAttributeValueChanged.AddUniqueDynamic(this, &AWizardsCharacter::HandleOnAnyAttributeValueChanged);
 
-	// Clear and re-load up all of our initial attributes to trigger changed delegates
+	// Clear and re-load up all of our initial attributes to trigger changed delegates when character begins play
 	const TMap<EAttributeKey, int32> InitialAttributes = BaseAttributes;
 	BaseAttributes.Empty(BaseAttributes.Num());
 	Algo::ForEach(InitialAttributes, [this](const TPair<EAttributeKey, int32>& CurInitialAttribute) {

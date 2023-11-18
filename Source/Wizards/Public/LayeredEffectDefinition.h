@@ -12,85 +12,20 @@ class ILayeredAttributes;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogLayeredEffects, Warning, All);
 
-/// <summary>
-/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
-/// </summary>
-UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
-enum ECreatureTypes
-{
-	CreatureTypes_None					= 0				UMETA(DisplayName = "None"),
-	CreatureTypes_Aberration			= (1 << 0)		UMETA(DisplayName = "Aberration"),
-	CreatureTypes_Beast					= (1 << 1)		UMETA(DisplayName = "Beast"),
-	CreatureTypes_Celestial				= (1 << 2)		UMETA(DisplayName = "Celestial"),
-	CreatureTypes_Construct				= (1 << 3)		UMETA(DisplayName = "Construct"),
-	CreatureTypes_Dragon				= (1 << 4)		UMETA(DisplayName = "Dragon"),
-	CreatureTypes_Elemental				= (1 << 5)		UMETA(DisplayName = "Elemental"),
-	CreatureTypes_Fey					= (1 << 6)		UMETA(DisplayName = "Fey"),
-	CreatureTypes_Fiend					= (1 << 7)		UMETA(DisplayName = "Fiend"),
-	CreatureTypes_Giant					= (1 << 8)		UMETA(DisplayName = "Giant"),
-	CreatureTypes_Humanoid				= (1 << 9)		UMETA(DisplayName = "Humanoid"),
-	CreatureTypes_Monstrosity			= (1 << 10)		UMETA(DisplayName = "Monstrosity"),
-	CreatureTypes_Ooze					= (1 << 11)		UMETA(DisplayName = "Ooze"),
-	CreatureTypes_Plant					= (1 << 12)		UMETA(DisplayName = "Plant"),
-	CreatureTypes_Undead				= (1 << 13)		UMETA(DisplayName = "Undead"),
-};
-ENUM_CLASS_FLAGS(ECreatureTypes);
-
-
-/// <summary>
-/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
-/// </summary>
-UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
-enum ECreatureSubtypes
-{
-	CreatureSubtypes_None				= 0				UMETA(DisplayName = "None"),
-	CreatureSubtypes_Air				= (1 << 0)		UMETA(DisplayName = "Air"),
-	CreatureSubtypes_Aquatic			= (1 << 1)		UMETA(DisplayName = "Aquatic"),
-	CreatureSubtypes_Chaotic			= (1 << 2)		UMETA(DisplayName = "Chaotic"),
-	CreatureSubtypes_Cold				= (1 << 3)		UMETA(DisplayName = "Cold"),
-	CreatureSubtypes_Earth				= (1 << 4)		UMETA(DisplayName = "Earth"),
-	CreatureSubtypes_Electricity		= (1 << 5)		UMETA(DisplayName = "Electricity"),
-	CreatureSubtypes_Evil				= (1 << 6)		UMETA(DisplayName = "Evil"),
-	CreatureSubtypes_Incorporeal		= (1 << 7)		UMETA(DisplayName = "Incorporeal"),
-	CreatureSubtypes_Fire				= (1 << 8)		UMETA(DisplayName = "Fire"),
-	CreatureSubtypes_Good				= (1 << 9)		UMETA(DisplayName = "Good"),
-	CreatureSubtypes_Lawful				= (1 << 10)		UMETA(DisplayName = "Lawful"),
-	CreatureSubtypes_Reptilian			= (1 << 11)		UMETA(DisplayName = "Reptilian"),
-	CreatureSubtypes_Water				= (1 << 12)		UMETA(DisplayName = "Water"),
-};
-ENUM_CLASS_FLAGS(ECreatureSubtypes);
-
-
-/// <summary>
-/// These would be better suited as FGameplayTag, so that they could be in a tree structure, and not limited by the number of bits
-/// </summary>
-UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
-enum ECreatureSupertypes
-{
-	CreatureSupertypes_None					= 0				UMETA(DisplayName = "None"),
-	CreatureSupertypes_Basic				= (1 << 0)		UMETA(DisplayName = "Basic"),
-	CreatureSupertypes_Legendary			= (1 << 1)		UMETA(DisplayName = "Legendary"),
-};
-ENUM_CLASS_FLAGS(ECreatureSupertypes);
-
-
 UENUM(BlueprintType)
 enum class EAttributeKey : uint8
 {
 	Invalid = 0,
 
-	Power			UMETA(Tooltip = "@TODO: fill out"),
-	Toughness		UMETA(Tooltip = "@TODO: fill out"),
-	Loyalty			UMETA(Tooltip = "@TODO: fill out"),
-	Mana			UMETA(Tooltip = "@TODO: fill out"),
-
-	Color			UMETA(Tooltip = "@TODO: fill out"),
-
-	Types			UMETA(Tooltip = "@TODO: fill out"),
-	Subtypes		UMETA(Tooltip = "@TODO: fill out"),
-	Supertypes		UMETA(Tooltip = "@TODO: fill out"),
-
-	Controller		UMETA(Tooltip = "@TODO: fill out")
+	Power,
+	Toughness,
+	Loyalty,
+	Color,
+	Types,
+	Subtypes,
+	Supertypes,
+	Mana,
+	Controller,
 };
 
 
@@ -120,7 +55,7 @@ enum class EEffectOperation : uint8
 	Multiply,
 
 	/// <summary>
-	/// Perform a bitwise "or" operation. (Add flag)
+	/// Perform a bitwise "or" operation.
 	/// </summary>
 	BitwiseOr,
 
@@ -130,14 +65,77 @@ enum class EEffectOperation : uint8
 	BitwiseAnd,
 
 	/// <summary>
-	/// Perform a bitwise "exclusive or" operation. (Toggle flag)
+	/// Perform a bitwise "exclusive or" operation.
 	/// </summary>
-	BitwiseXor
+	BitwiseXor,
 };
+namespace EEffectOperationUtils
+{
+	/// <summary>
+	/// Performs evaluation of the left and right hand operands, given the Operation.
+	/// </summary>
+	static int32 Evaluate(int32 LhsOperand, int32 RhsOperand, EEffectOperation Operation)
+	{
+		switch (Operation)
+		{
+			case EEffectOperation::Set:
+				return RhsOperand;
+			case EEffectOperation::Add:
+				return (LhsOperand + RhsOperand);
+			case EEffectOperation::Subtract:
+				return (LhsOperand - RhsOperand);
+			case EEffectOperation::Multiply:
+				return (LhsOperand * RhsOperand);
+			case EEffectOperation::BitwiseOr:
+				return (LhsOperand | RhsOperand);
+			case EEffectOperation::BitwiseAnd:
+				return (LhsOperand & RhsOperand);
+			case EEffectOperation::BitwiseXor:
+				return (LhsOperand ^ RhsOperand);
+
+			default:
+				checkNoEntry();
+				return LhsOperand;
+		}
+	}
+
+	/// <summary>
+	/// Short string representation of Operation for debugging/printing.
+	/// </summary>
+	static FString OperatorToString(EEffectOperation Operation)
+	{
+		switch (Operation)
+		{
+			case EEffectOperation::Invalid:
+				return TEXT("INVALID");
+
+			case EEffectOperation::Set:
+				return TEXT("=");
+			case EEffectOperation::Add:
+				return TEXT("+");
+			case EEffectOperation::Subtract:
+				return TEXT("-");
+			case EEffectOperation::Multiply:
+				return TEXT("*");
+			case EEffectOperation::BitwiseOr:
+				return TEXT("|");
+			case EEffectOperation::BitwiseAnd:
+				return TEXT("&");
+			case EEffectOperation::BitwiseXor:
+				return TEXT("^");
+
+			default:
+				checkNoEntry();
+				return TEXT("");
+		}
+	}
+}
 
 
 /// <summary>
 /// Temporary parameter struct used when an attribute has changed.
+/// The Owner should create this struct any time an attribute is being modified,
+/// so that attribute changes can be detected and broadcast to UI/etc.
 /// </summary>
 USTRUCT(BlueprintType)
 struct WIZARDS_API FOnAttributeChangedData
@@ -160,15 +158,27 @@ public:
 
 private:
 
+	/// <summary>
+	/// Who owns this attribute.
+	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UObject* Owner = nullptr;
 
+	/// <summary>
+	/// Which attribute was affected.
+	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	EAttributeKey Attribute = EAttributeKey::Invalid;
 
+	/// <summary>
+	/// New/current value for the attribute.
+	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 NewValue = 0;
 
+	/// <summary>
+	/// Old/previous value for the attribute.
+	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 OldValue = 0;
 };
@@ -207,10 +217,7 @@ public:
 			&& GetOperation() != EEffectOperation::Invalid);
 	}
 
-	FString ToString() const
-	{
-		return FString::Printf(TEXT("TODO: implement"));
-	}
+	FString ToString() const;
 
 
 private:
@@ -248,8 +255,8 @@ private:
 
 /// <summary>
 /// This handle is required for referring to a specific active FActiveEffectDefinition.
-/// For example if a skill needs to create an active effect and then destroy that specific effect that it created, it has to do so
-/// through a handle.a pointer or index into the active list is not sufficient.
+/// For example if a skill needs to create an active effect and then destroy that specific effect that it created,
+/// it has to do so through a handle; a pointer or index into the active list is not sufficient.
 /// </summary>
 USTRUCT(BlueprintType)
 struct WIZARDS_API FActiveEffectHandle
@@ -265,7 +272,14 @@ struct WIZARDS_API FActiveEffectHandle
 
 	static const FActiveEffectHandle kInvalid;
 
-	/** True if this is tracking an active ongoing effect */
+	/// <summary>
+	/// Creates a new handle, will be set to successfully applied.
+	/// </summary>
+	static FActiveEffectHandle GenerateNewHandle(EAttributeKey Attribute);
+
+	/// <summary>
+	/// True if this is tracking an active ongoing effect.
+	/// </summary>
 	bool IsValid() const
 	{
 		return Handle != INDEX_NONE;
@@ -276,18 +290,12 @@ struct WIZARDS_API FActiveEffectHandle
 		return FString::Printf(TEXT("%d"), Handle);
 	}
 
-	/** Creates a new handle, will be set to successfully applied */
-	static FActiveEffectHandle GenerateNewHandle(EAttributeKey Attribute);
-
-	bool operator==(const FActiveEffectHandle& Other) const
+	bool Equals(const FActiveEffectHandle& Other) const
 	{
 		return Handle == Other.Handle;
 	}
-
-	bool operator!=(const FActiveEffectHandle& Other) const
-	{
-		return Handle != Other.Handle;
-	}
+	bool operator==(const FActiveEffectHandle& Other) const { return Equals(Other); }
+	bool operator!=(const FActiveEffectHandle& Other) const { return !Equals(Other); }
 
 	friend uint32 GetTypeHash(const FActiveEffectHandle& InHandle)
 	{
@@ -297,18 +305,24 @@ struct WIZARDS_API FActiveEffectHandle
 	void Invalidate()
 	{
 		Handle = INDEX_NONE;
+		Attribute = EAttributeKey::Invalid;
 	}
 
 	EAttributeKey GetAttribute() const { return Attribute; }
 
 private:
 
+	/// <summary>
+	/// Unique ID for this effect.
+	/// </summary>
 	UPROPERTY()
 	int32 Handle = INDEX_NONE;
 
+	/// <summary>
+	/// Which attribute this effect modifies (for faster lookup on Owner).
+	/// </summary>
 	UPROPERTY()
 	EAttributeKey Attribute = EAttributeKey::Invalid;
-
 };
 
 
@@ -339,7 +353,10 @@ public:
 
 	FString ToString() const
 	{
-		return FString::Printf(TEXT("TODO: fill out"));
+		return FString::Printf(TEXT("%s %.2f %s"),
+			*Handle.ToString(),
+			StartServerWorldTime,
+			*Def.ToString());
 	}
 
 	const FActiveEffectHandle& GetHandle() const { return Handle; }
@@ -352,7 +369,7 @@ public:
 private:
 
 	/// <summary>
-	/// Globally unique ID for identify this active effect. Not networked since it's created from a static var.
+	/// Globally unique ID for identify this active effect.
 	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, NotReplicated, meta = (AllowPrivateAccess = "true"))
 	FActiveEffectHandle Handle = FActiveEffectHandle::kInvalid;
@@ -372,8 +389,8 @@ private:
 
 
 /// <summary>
-/// Stores applied FLayeredEffectDefinition.
-/// All operations maintain an increasing sorted order by FLayeredEffectDefinition::Layer.
+/// Stores applied FLayeredEffectDefinition for a single attribute.
+/// All operations maintain an increasing sorted order by FLayeredEffectDefinition::Layer for faster layered attribute calculation.
 /// </summary>
 USTRUCT(BlueprintType)
 struct WIZARDS_API FSortedEffectDefinitions
@@ -382,38 +399,54 @@ struct WIZARDS_API FSortedEffectDefinitions
 
 public:
 
-	static int32 Evaluate(int32 LhsOperand, int32 RhsOperand, EEffectOperation Operator);
-
+	/// <summary>
+	/// Applies a new layered effect to this object's attributes.
+	/// </summary>
+	/// <param name="World">World that this effect is being applied it, so that we can track time of application.</param>
+	/// <param name="Effect">The new layered effect to apply.</param>
+	/// <returns>The handle to the newly applied effect, so that it can be removed later.</returns>
 	FActiveEffectHandle AddLayeredEffect(const UWorld* World, const FLayeredEffectDefinition& Effect);
 
+	/// <summary>
+	/// Removes an active layered effect.
+	/// </summary>
+	/// <param name="InHandle">Which active effect to remove.</param>
+	/// <returns>True if the effect was successfully removed.</returns>
 	bool RemoveLayeredEffect(const FActiveEffectHandle& InHandle);
 
+	/// <summary>
+	/// Removes all layered effects from this object. After this call,
+	/// all current attributes will be equal to the base attributes.
+	/// </summary>
+	/// <returns>True if any effect was successfully removed.</returns>
 	bool ClearLayeredEffects();
 
+	/// <summary>
+	/// Modifies the BaseValue by all active layered effects.
+	/// </summary>
+	/// <param name="BaseValue">The base value for the attribute, as a starting point to calculate from.</param>
+	/// <returns>The current value of the attribute, accounting for all layered effects.</returns>
 	int32 GetCurrentValue(const int32 BaseValue) const;
 
 private:
 
+	/// <summary>
+	/// Sorted effects applied to an attribute.
+	/// </summary>
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FActiveEffectDefinition> SortedEffects;
 };
 
 
 /// <summary>
-/// Exposing helper methods to blueprint.
+/// Exposing helper methods for layered effects to blueprint.
 /// </summary>
 UCLASS()
-class WIZARDS_API UStaticBlueprintLibrary : public UBlueprintFunctionLibrary
+class WIZARDS_API ULayeredEffectBlueprintLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 
 public:
-
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToColor (int)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
-	static FColor Conv_IntToColor(int32 Value);
-
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToInt (color)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
-	static int32 Conv_ColorToInt(FColor Value);
 
 	UFUNCTION(BlueprintPure, Category = "LayeredEffectDefinition")
 	static bool IsValid(const FLayeredEffectDefinition& Effect) { return Effect.IsValid(); }
@@ -421,75 +454,59 @@ public:
 	UFUNCTION(BlueprintPure, meta = (CompactNodeTitle = "->", BlueprintAutocast), Category = "LayeredEffectDefinition")
 	static FString ToString(const FLayeredEffectDefinition& Effect) { return Effect.ToString(); }
 
-	static int32 GetValueClampedToInt32(int64 Value);
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToColor (int)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
+	static FColor Conv_IntToColor(int32 Value);
 
-	static int32 GetValueClampedToInt32(uint32 Value);
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToInt (color)", CompactNodeTitle = "->", BlueprintAutocast), Category = "Utilities|Attributes")
+	static int32 Conv_ColorToInt(FColor Value);
+};
 
-	/** Uses StringFunction to transform every member of TargetArray to an FString. */
-	template <typename T, typename TAllocator = FDefaultAllocator, typename StringFn>
-	static FString ArrayAsString(const TArray<T, TAllocator>& TargetArray, StringFn StringFunction, const FString& Separator = TEXT(", "))
+
+/// <summary>
+/// Exposing enum helper methods to C++.
+/// </summary>
+UCLASS()
+class WIZARDS_API UEnumLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	/**
+	 * Converts an enum value to an FName.
+	 *
+	 * E.g., for
+	 * UStaticLibrary::GetEnumValueAsString(EMyEnum::OptionA),
+	 * this will return "EMyEnum::OptionA".
+	 *
+	 * @tparam TEnum Type of the enum (e.g., <ENetRole>).
+	 * @param Value Enum value to convert to an FName.
+	 * @returns The enum value as an FName.
+	 */
+	template <typename TEnum>
+	static FORCEINLINE FName GetEnumValueAsName(TEnum Value)
 	{
-		FString Result;
-		bool    First = true;
-		for (const auto& Element : TargetArray)
-		{
-			if (First)
-			{
-				First = false;
-			}
-			else
-			{
-				Result += Separator;
-			}
-
-			Result += StringFunction(Element);
-		}
-
-		return Result;
-	}
-
-	template <typename TAllocator = FDefaultAllocator>
-	static FString NameArrayAsString(const TArray<FName, TAllocator>& NameArray, const FString& Separator = TEXT(", "))
-	{
-		auto NameToString = [](const FName& Name) -> FString {
-			return Name.ToString();
-		};
-
-		return ArrayAsString(NameArray, NameToString, Separator);
+		FName AsName = NAME_None;
+		UEnum::GetValueAsName(Value, AsName);
+		return AsName;
 	}
 
 	/**
-	 * Converts a bitmask value to an FString.
+	 * Converts an enum value to an FString.
 	 *
 	 * E.g., for
-	 * GetBitmaskValueAsString(EMyMask::MyMask_OptionA | EMyMask::MyMask_OptionB),
-	 * this will return "EMyMask::MyMask_OptionA | EMyMask::MyMask_OptionB".
+	 * UStaticLibrary::GetEnumValueAsString(EMyEnum::OptionA),
+	 * this will return "EMyEnum::OptionA".
 	 *
-	 * @tparam TEnum Type of the bitmask (e.g., <EMyMask>).
-	 * @param MaskValue Bitmask value to convert to an FString.
-	 * @returns The bitmask value as an FString.
+	 * @tparam TEnum Type of the enum (e.g., <ENetRole>).
+	 * @param Value Enum value to convert to an FString.
+	 * @returns The enum value as an FString.
 	 */
 	template <typename TEnum>
-	static FString GetBitmaskValueAsString(TEnum MaskValue)
+	static FORCEINLINE FString GetEnumValueAsString(TEnum Value)
 	{
-		UEnum* EnumPtr = GetEnumPtr<TEnum>();
-		TArray<FName> MaskValueEnumEntryNames;
-
-		for (int32 i = 0; i < GetEnumNumEntries<TEnum>(/*bIncludeMax*/ false); i++)
-		{
-			const TEnum CurEnumEntryValue = static_cast<TEnum>(EnumPtr->GetValueByIndex(i));
-			const FName CurEnumEntryName = EnumPtr->GetNameByIndex(i);
-
-			if (EnumHasAnyFlags(MaskValue, CurEnumEntryValue))
-			{
-				MaskValueEnumEntryNames.Add(CurEnumEntryName);
-			}
-		}
-
-		return NameArrayAsString(MaskValueEnumEntryNames, TEXT(" | "));
+		return GetEnumValueAsName(Value).ToString();
 	}
-
-	
 
 	/**
 	 * Gets the enum pointer from the templated argument.
@@ -518,9 +535,9 @@ public:
 	 *     OptionB                                          = 1,
 	 *     OptionC                                          = 4,
 	 * };
-	 * UStaticBlueprintLibrary::GetEnumNumEntries<EMyEnum>(true),
+	 * UEnumLibrary::GetEnumNumEntries<EMyEnum>(true),
 	 * this will return "4" (OptionA, OptionB, OptionC, and autogenerated _MAX entry).
-	 * UStaticBlueprintLibrary::GetEnumNumEntries<EMyEnum>(false),
+	 * UEnumLibrary::GetEnumNumEntries<EMyEnum>(false),
 	 * will return "3" (excludes the autogenerated MAX)
 	 *
 	 * @tparam TEnum Type of the enum (e.g., <ENetRole>).
@@ -563,7 +580,7 @@ public:
 		TArray<TEnum> EnumEntries;
 
 		const UEnum* EnumPtr = GetEnumPtr<TEnum>();
-		const int32 EnumNumEntries = UStaticBlueprintLibrary::GetEnumNumEntries<TEnum>(bIncludeMax);
+		const int32 EnumNumEntries = UEnumLibrary::GetEnumNumEntries<TEnum>(bIncludeMax);
 		for (uint8 i = 0; i < EnumNumEntries; i++)
 		{
 			TEnum CurEnumValue = (TEnum)EnumPtr->GetValueByIndex(i);
@@ -575,5 +592,4 @@ public:
 
 		return EnumEntries;
 	}
-
 };
