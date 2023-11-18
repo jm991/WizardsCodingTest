@@ -1,6 +1,10 @@
 # WizardsCodingTest
 Coding test for Wizards of the Coast
 
+🔊 on for narration explaning project 🔊
+
+https://github.com/jm991/WizardsCodingTest/assets/3520284/ea17daa2-49bb-4f94-b9b9-c2add310eaa2
+
 ```
 #pragma once
 
