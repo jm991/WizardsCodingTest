@@ -106,7 +106,7 @@ void AttributeTest::Define()
 			TArray<LayeredEffectTest> OrderedOperations =
 			{
 				LayeredEffectTest{ EEffectOperation::Add , AddAmt, (BaseValueA + AddAmt) },
-				LayeredEffectTest{ EEffectOperation::Multiply , MultiplyAmt, ((BaseValueA + AddAmt) * MultiplyAmt) }
+				LayeredEffectTest{ EEffectOperation::Multiply , MultiplyAmt, ((BaseValueA + AddAmt) * MultiplyAmt) },
 			};
 
 			TestEqual("Base attributes start at 0", MyCharacter->GetCurrentAttribute(Attribute), 0);
@@ -137,7 +137,7 @@ void AttributeTest::Define()
 			{
 				LayeredEffectTest{ EEffectOperation::Add , AddAmt, (BaseValue + AddAmt) },
 				LayeredEffectTest{ EEffectOperation::Subtract , SubtractAmt, ((BaseValue + AddAmt) - SubtractAmt) },
-				LayeredEffectTest{ EEffectOperation::Multiply , MultiplyAmt, (((BaseValue + AddAmt) - SubtractAmt) * MultiplyAmt) }
+				LayeredEffectTest{ EEffectOperation::Multiply , MultiplyAmt, (((BaseValue + AddAmt) - SubtractAmt) * MultiplyAmt) },
 			};
 			TArray<FActiveEffectHandle> OrderedEffectHandles = { };
 
@@ -157,6 +157,38 @@ void AttributeTest::Define()
 			TestTrue("Subtractive effect handle exists", OrderedEffectHandles.IsValidIndex(SubtractiveEffectIndex));
 			TestTrue("Subtractive effect was removed", MyCharacter->RemoveLayeredEffect(OrderedEffectHandles[SubtractiveEffectIndex]));
 			TestEqual("Layered effect value was updated after subtractive effect was removed", MyCharacter->GetCurrentAttribute(Attribute), ((BaseValue + AddAmt) * MultiplyAmt));
+		});
+
+		It("Smaller numbered layers get applied first - layered effects with the same layer get applied in the order that they were added (timestamp order)", [this]()
+		{
+			const EAttributeKey Attribute = EAttributeKey::Power;
+			const int32 BaseValue = -15;
+
+			// Test a complex layering of effects, to make sure operations are applied correctly and the effects are sorted correctly
+			TArray<TPair<FLayeredEffectDefinition, int32>> LayeredEffectsAndExpectedValues =
+			{
+				//																				Mod		Layer	Expected
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Add,			2,		4)	,	(BaseValue + 2)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Subtract,		-5,		0)	,	((BaseValue - -5) + 2)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Multiply,		-2,		1)	,	(((BaseValue - -5) * -2) + 2)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseOr,	1,		5)	,	((((BaseValue - -5) * -2) + 2) | 1)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseAnd,	4,		2)	,	(((((BaseValue - -5) * -2) & 4) + 2) | 1)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::BitwiseXor,	8,		2)	,	((((((BaseValue - -5) * -2) & 4) ^ 8) + 2) | 1)),
+				MakeTuple(FLayeredEffectDefinition(Attribute,	EEffectOperation::Set,			3,		2)	,	((3 + 2) | 1)),
+			};
+
+			MyCharacter->SetBaseAttribute(Attribute, BaseValue);
+			TestEqual("First base attribute initialized", MyCharacter->GetCurrentAttribute(Attribute), BaseValue);
+
+			for (const TPair<FLayeredEffectDefinition, int32>& CurLayeredEffectAndExpectedVal : LayeredEffectsAndExpectedValues)
+			{
+				bool bSuccess = false;
+				MyCharacter->AddLayeredEffect(CurLayeredEffectAndExpectedVal.Key, bSuccess);
+				TestTrue("Current layered effect was successfully applied", bSuccess);
+				const int32 CurActual = MyCharacter->GetCurrentAttribute(Attribute);
+				const int32 CurExpected = CurLayeredEffectAndExpectedVal.Value;
+				TestEqual("Layered effect value was correct", CurActual, CurExpected);
+			}
 		});
 
 		It("Clearing attributes removes all layered effects from this object - after this call, all current attributes will be equal to the base attributes", [this]()
